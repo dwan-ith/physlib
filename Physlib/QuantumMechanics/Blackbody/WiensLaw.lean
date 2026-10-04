@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2026 Dwanith C. Jayanth. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Dwanith C. Jayanth
+Authors: Samyak Rai, Dwanith C. Jayanth
 -/
 module
 
@@ -76,8 +76,8 @@ The two constants differ because the "peak" depends on the parametrization.
   continuity of the physical curves on `(0, ∞)`.
 - `spectralRadianceWave_tendsto_zero_atTop` /
   `spectralRadianceWave_tendsto_nhdsWithin_zero` /
-  `spectralRadianceFreq_tendsto_zero_atTop` /
-  `spectralRadianceFreq_tendsto_nhdsWithin_zero`: the curves vanish at both
+  `spectralRadiance_tendsto_zero_atTop` /
+  `spectralRadiance_tendsto_nhdsWithin_zero`: the curves vanish at both
   ends of the physical domain.
 - `spectralRadianceWave_isMaxOn` / `spectralRadianceFreq_isMaxOn`: the
   critical wavelengths/frequencies are global maxima.
@@ -112,7 +112,9 @@ The two constants differ because the "peak" depends on the parametrization.
 @[expose] public section
 noncomputable section
 
-namespace Blackbody
+namespace BlackBody
+
+open Constants
 
 open Set Filter Topology
 
@@ -767,271 +769,267 @@ physical curves correspond exactly to solutions of the Wien equation.
 -/
 
 /-- Wavelength prefactor `C(T) = 2 (kB T)⁵ / (h⁴ c³)`. -/
-noncomputable def wavePrefactor (h c kB T : ℝ) : ℝ :=
-  2 * (kB * T) ^ 5 / (h ^ 4 * c ^ 3)
+noncomputable def wavePrefactor (B : BlackBody) (c : SpeedOfLight) : ℝ :=
+  2 * (kB * (B.T : ℝ)) ^ 5 / ((h : ℝ) ^ 4 * (c : ℝ) ^ 3)
 
 /-- Frequency prefactor `D(T) = 2 (kB T)³ / (h² c²)`. -/
-noncomputable def freqPrefactor (h c kB T : ℝ) : ℝ :=
-  2 * (kB * T) ^ 3 / (h ^ 2 * c ^ 2)
+noncomputable def freqPrefactor (B : BlackBody) (c : SpeedOfLight) : ℝ :=
+  2 * (kB * (B.T : ℝ)) ^ 3 / ((h : ℝ) ^ 2 * (c : ℝ) ^ 2)
 
 /-- Dimensionless wavelength variable `x = h c / (λ kB T)`. -/
-noncomputable def waveVar (h c kB T lam : ℝ) : ℝ := h * c / (lam * kB * T)
+noncomputable def waveVar (B : BlackBody) (c : SpeedOfLight) (λ : ℝ) : ℝ :=
+  (h : ℝ) * (c : ℝ) / (λ * kB * (B.T : ℝ))
 
 /-- Dimensionless frequency variable `x = h ν / (kB T)`. -/
-noncomputable def freqVar (h kB T nu : ℝ) : ℝ := h * nu / (kB * T)
+noncomputable def freqVar (B : BlackBody) (ν : ℝ) : ℝ :=
+  (h : ℝ) * ν / (kB * (B.T : ℝ))
 
-/-- The wavelength prefactor is positive for positive parameters. -/
-lemma wavePrefactor_pos (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) : 0 < wavePrefactor h c kB T := by
+/-- The wavelength prefactor is positive for positive temperature. -/
+lemma wavePrefactor_pos (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) : 0 < B.wavePrefactor c := by
   unfold wavePrefactor
   apply div_pos
-  · exact mul_pos zero_lt_two (pow_pos (mul_pos hk hT) 5)
-  · exact mul_pos (pow_pos hh 4) (pow_pos hc 3)
+  · exact mul_pos zero_lt_two (pow_pos (mul_pos kB_pos hT) 5)
+  · exact mul_pos (pow_pos h_pos 4) (pow_pos c.val_pos 3)
 
-/-- The frequency prefactor is positive for positive parameters. -/
-lemma freqPrefactor_pos (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) : 0 < freqPrefactor h c kB T := by
+/-- The frequency prefactor is positive for positive temperature. -/
+lemma freqPrefactor_pos (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) : 0 < B.freqPrefactor c := by
   unfold freqPrefactor
   apply div_pos
-  · exact mul_pos zero_lt_two (pow_pos (mul_pos hk hT) 3)
-  · exact mul_pos (pow_pos hh 2) (pow_pos hc 2)
+  · exact mul_pos zero_lt_two (pow_pos (mul_pos kB_pos hT) 3)
+  · exact mul_pos (pow_pos h_pos 2) (pow_pos c.val_pos 2)
 
-/-- The dimensionless wavelength variable is positive for positive parameters. -/
-lemma waveVar_pos (h c kB T lam : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) (hlam : 0 < lam) :
-    0 < waveVar h c kB T lam := by
+/-- The dimensionless wavelength variable is positive for positive wavelength and temperature. -/
+lemma waveVar_pos (B : BlackBody) (c : SpeedOfLight) (λ : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hλ : 0 < λ) : 0 < B.waveVar c λ := by
   unfold waveVar
-  exact div_pos (mul_pos hh hc) (mul_pos (mul_pos hlam hk) hT)
+  exact div_pos (mul_pos h_pos c.val_pos) (mul_pos (mul_pos hλ kB_pos) hT)
 
-/-- The dimensionless frequency variable is positive for positive parameters. -/
-lemma freqVar_pos (h kB T nu : ℝ) (hh : 0 < h)
-    (hk : 0 < kB) (hT : 0 < T) (hν : 0 < nu) :
-    0 < freqVar h kB T nu := by
+/-- The dimensionless frequency variable is positive for positive frequency and temperature. -/
+lemma freqVar_pos (B : BlackBody) (ν : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hν : 0 < ν) : 0 < B.freqVar ν := by
   unfold freqVar
-  exact div_pos (mul_pos hh hν) (mul_pos hk hT)
+  exact div_pos (mul_pos h_pos hν) (mul_pos kB_pos hT)
 
 /-- The wavelength curve factors through the `n = 5` profile on `λ > 0`. -/
-lemma spectralRadianceWave_eq_profile (h c kB T lam : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT : 0 < T) (hlam : 0 < lam) :
-    spectralRadianceWave h c kB lam T
-      = wavePrefactor h c kB T * wienProfile 5 (waveVar h c kB T lam) := by
-  have h1 : 0 < lam ∧ 0 < T := ⟨hlam, hT⟩
+lemma spectralRadianceWave_eq_profile (B : BlackBody) (c : SpeedOfLight) (λ : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hλ : 0 < λ) :
+    B.spectralRadianceWave c λ
+      = B.wavePrefactor c * wienProfile 5 (B.waveVar c λ) := by
+  have h1 : 0 < λ ∧ 0 < (B.T : ℝ) := ⟨hλ, hT⟩
   unfold spectralRadianceWave wavePrefactor wienProfile waveVar
   rw [if_pos h1]
-  have hlam' : lam ≠ 0 := ne_of_gt hlam
-  have hh' : h ≠ 0 := ne_of_gt hh
-  have hc' : c ≠ 0 := ne_of_gt hc
-  have hk' : kB ≠ 0 := ne_of_gt hk
-  have hT' : T ≠ 0 := ne_of_gt hT
-  have hE : Real.exp (h * c / (lam * kB * T)) - 1 ≠ 0 := by
-    have harg : 0 < h * c / (lam * kB * T) :=
-      div_pos (mul_pos hh hc) (mul_pos (mul_pos hlam hk) hT)
-    have h1e : 1 < Real.exp (h * c / (lam * kB * T)) := Real.one_lt_exp_iff.mpr harg
+  have hλ' : λ ≠ 0 := ne_of_gt hλ
+  have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
+  have hc' : (c : ℝ) ≠ 0 := ne_of_gt c.val_pos
+  have hk' : kB ≠ 0 := ne_of_gt kB_pos
+  have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
+  have hE : Real.exp ((h : ℝ) * (c : ℝ) / (λ * kB * (B.T : ℝ))) - 1 ≠ 0 := by
+    have harg : 0 < (h : ℝ) * (c : ℝ) / (λ * kB * (B.T : ℝ)) :=
+      div_pos (mul_pos h_pos c.val_pos) (mul_pos (mul_pos hλ kB_pos) hT)
+    have h1e : 1 < Real.exp ((h : ℝ) * (c : ℝ) / (λ * kB * (B.T : ℝ))) :=
+      Real.one_lt_exp_iff.mpr harg
     exact ne_of_gt (sub_pos.mpr h1e)
   field_simp
 
 /-- The frequency curve factors through the `n = 3` profile on `ν > 0`. -/
-lemma spectralRadianceFreq_eq_profile (h c kB T nu : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT : 0 < T) (hν : 0 < nu) :
-    spectralRadianceFreq h c kB nu T
-      = freqPrefactor h c kB T * wienProfile 3 (freqVar h kB T nu) := by
-  have h1 : 0 < nu ∧ 0 < T := ⟨hν, hT⟩
-  unfold spectralRadianceFreq freqPrefactor wienProfile freqVar
+lemma spectralRadiance_eq_profile (B : BlackBody) (c : SpeedOfLight) (ν : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hν : 0 < ν) :
+    B.spectralRadiance c ν = B.freqPrefactor c * wienProfile 3 (B.freqVar ν) := by
+  have h1 : 0 < ν ∧ 0 < (B.T : ℝ) := ⟨hν, hT⟩
+  unfold spectralRadiance freqPrefactor wienProfile freqVar
   rw [if_pos h1]
-  have hν' : nu ≠ 0 := ne_of_gt hν
-  have hh' : h ≠ 0 := ne_of_gt hh
-  have hc' : c ≠ 0 := ne_of_gt hc
-  have hk' : kB ≠ 0 := ne_of_gt hk
-  have hT' : T ≠ 0 := ne_of_gt hT
-  have hE : Real.exp (h * nu / (kB * T)) - 1 ≠ 0 := by
-    have harg : 0 < h * nu / (kB * T) :=
-      div_pos (mul_pos hh hν) (mul_pos hk hT)
-    have h1e : 1 < Real.exp (h * nu / (kB * T)) := Real.one_lt_exp_iff.mpr harg
+  have hν' : ν ≠ 0 := ne_of_gt hν
+  have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
+  have hc' : (c : ℝ) ≠ 0 := ne_of_gt c.val_pos
+  have hk' : kB ≠ 0 := ne_of_gt kB_pos
+  have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
+  have hE : Real.exp ((h : ℝ) * ν / (kB * (B.T : ℝ))) - 1 ≠ 0 := by
+    have harg : 0 < (h : ℝ) * ν / (kB * (B.T : ℝ)) :=
+      div_pos (mul_pos h_pos hν) (mul_pos kB_pos hT)
+    have h1e : 1 < Real.exp ((h : ℝ) * ν / (kB * (B.T : ℝ))) :=
+      Real.one_lt_exp_iff.mpr harg
     exact ne_of_gt (sub_pos.mpr h1e)
   field_simp
 
 /-- Derivative of the wavelength curve at `λ > 0`, via the chain rule. -/
-lemma hasDerivAt_wave (h c kB T lam : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) (hlam : 0 < lam) :
-    HasDerivAt (fun lam => spectralRadianceWave h c kB lam T)
-      (wavePrefactor h c kB T
-        * (deriv (wienProfile 5) (waveVar h c kB T lam)
-          * (-(h * c / (kB * T)) / lam ^ 2))) lam := by
-  have hK : 0 < h * c / (kB * T) :=
-    div_pos (mul_pos hh hc) (mul_pos hk hT)
-  have hlam' : lam ≠ 0 := ne_of_gt hlam
-  have hk' : kB ≠ 0 := ne_of_gt hk
-  have hT' : T ≠ 0 := ne_of_gt hT
-  have hkT : kB * T ≠ 0 := mul_ne_zero hk' hT'
-  have hlamkT : lam * kB * T ≠ 0 := mul_ne_zero (mul_ne_zero hlam' hk') hT'
-  have hpt : h * c / (kB * T) / lam = waveVar h c kB T lam := by
+lemma hasDerivAt_wave (B : BlackBody) (c : SpeedOfLight) (λ : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hλ : 0 < λ) :
+    HasDerivAt (fun λ => B.spectralRadianceWave c λ)
+      (B.wavePrefactor c
+        * (deriv (wienProfile 5) (B.waveVar c λ)
+          * (-((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) / λ ^ 2))) λ := by
+  have hK : 0 < (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) :=
+    div_pos (mul_pos h_pos c.val_pos) (mul_pos kB_pos hT)
+  have hλ' : λ ≠ 0 := ne_of_gt hλ
+  have hk' : kB ≠ 0 := ne_of_gt kB_pos
+  have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
+  have hkT : kB * (B.T : ℝ) ≠ 0 := mul_ne_zero hk' hT'
+  have hλkT : λ * kB * (B.T : ℝ) ≠ 0 := mul_ne_zero (mul_ne_zero hλ' hk') hT'
+  have hpt : (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ = B.waveVar c λ := by
     unfold waveVar
     field_simp
-  have hpt_pos : 0 < h * c / (kB * T) / lam := by
+  have hpt_pos : 0 < (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ := by
     rw [hpt]
-    exact waveVar_pos h c kB T lam hh hc hk hT hlam
-  have hexp_gt : (1 : ℝ) < Real.exp (h * c / (kB * T) / lam) := by
+    exact waveVar_pos B c λ hT hλ
+  have hexp_gt : (1 : ℝ) < Real.exp ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ) := by
     have hlt := Real.exp_strictMono hpt_pos
     rwa [Real.exp_zero] at hlt
-  have he : Real.exp (h * c / (kB * T) / lam) - 1 ≠ 0 :=
+  have he : Real.exp ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ) - 1 ≠ 0 :=
     ne_of_gt (sub_pos.mpr hexp_gt)
-  -- derivative of the inner variable `K / lam`
-  have hinner : HasDerivAt (fun lam => h * c / (kB * T) / lam)
-      ((0 * lam - h * c / (kB * T) * 1) / lam ^ 2) lam :=
-    (hasDerivAt_const lam (h * c / (kB * T))).div (hasDerivAt_id' lam)
-      (ne_of_gt hlam)
+  -- derivative of the inner variable `K / λ`
+  have hinner : HasDerivAt (fun λ => (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ)
+      ((0 * λ - (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) * 1) / λ ^ 2) λ :=
+    (hasDerivAt_const λ ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)))).div
+      (hasDerivAt_id' λ) (ne_of_gt hλ)
   -- the profile composed with the inner variable
-  have hcomp : HasDerivAt (wienProfile 5 ∘ (fun lam => h * c / (kB * T) / lam))
-      (deriv (wienProfile 5) (h * c / (kB * T) / lam)
-        * ((0 * lam - h * c / (kB * T) * 1) / lam ^ 2)) lam := by
-    have hprof := hasDerivAt_wienProfile 5 (h * c / (kB * T) / lam) he
-    have hcc := HasDerivAt.comp lam hprof hinner
+  have hcomp : HasDerivAt
+      (wienProfile 5 ∘ (fun λ => (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ))
+      (deriv (wienProfile 5) ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ)
+        * ((0 * λ - (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) * 1) / λ ^ 2)) λ := by
+    have hprof := hasDerivAt_wienProfile 5
+      ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ) he
+    have hcc := HasDerivAt.comp λ hprof hinner
     rwa [← hprof.deriv] at hcc
-  -- transfer to the `waveVar` formulation on a neighborhood of `lam`
-  have hev : (wienProfile 5 ∘ (fun lam => h * c / (kB * T) / lam))
-      =ᶠ[𝓝 lam] (fun lam => wienProfile 5 (waveVar h c kB T lam)) := by
-    have hkT' : kB * T ≠ 0 := mul_ne_zero hk' hT'
-    apply Filter.eventually_of_mem (Ioi_mem_nhds hlam)
+  -- transfer to the `waveVar` formulation on a neighborhood of `λ`
+  have hev : (wienProfile 5 ∘ (fun λ => (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / λ))
+      =ᶠ[𝓝 λ] (fun λ => wienProfile 5 (B.waveVar c λ)) := by
+    apply Filter.eventually_of_mem (Ioi_mem_nhds hλ)
     intro y hy
     rw [mem_Ioi] at hy
     have hy' : y ≠ 0 := ne_of_gt hy
-    have hAy : h * c / (kB * T) / y = waveVar h c kB T y := by
+    have hAy : (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) / y = B.waveVar c y := by
       unfold waveVar
       field_simp
     simp only [Function.comp_apply]
     rw [hAy]
   have hC : HasDerivAt
-      (fun lam => wavePrefactor h c kB T * wienProfile 5 (waveVar h c kB T lam))
-      (wavePrefactor h c kB T
-        * (deriv (wienProfile 5) (waveVar h c kB T lam)
-          * (-(h * c / (kB * T)) / lam ^ 2))) lam := by
+      (fun λ => B.wavePrefactor c * wienProfile 5 (B.waveVar c λ))
+      (B.wavePrefactor c
+        * (deriv (wienProfile 5) (B.waveVar c λ)
+          * (-((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) / λ ^ 2))) λ := by
     have hcomp2 := hcomp.congr_of_eventuallyEq hev.symm
     rw [hpt] at hcomp2
-    have hder : deriv (wienProfile 5) (waveVar h c kB T lam)
-          * ((0 * lam - h * c / (kB * T) * 1) / lam ^ 2)
-        = deriv (wienProfile 5) (waveVar h c kB T lam)
-          * (-(h * c / (kB * T)) / lam ^ 2) := by ring
+    have hder : deriv (wienProfile 5) (B.waveVar c λ)
+          * ((0 * λ - (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) * 1) / λ ^ 2)
+        = deriv (wienProfile 5) (B.waveVar c λ)
+          * (-((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) / λ ^ 2) := by ring
     have hcomp3 := hcomp2.congr_deriv hder
-    exact hcomp3.const_mul (wavePrefactor h c kB T)
-  -- the physical curve agrees with the factored form near `lam`
-  have heq : (fun lam => spectralRadianceWave h c kB lam T)
-      =ᶠ[𝓝 lam] (fun lam => wavePrefactor h c kB T
-        * wienProfile 5 (waveVar h c kB T lam)) := by
-    apply Filter.eventually_of_mem (Ioi_mem_nhds hlam)
+    exact hcomp3.const_mul (B.wavePrefactor c)
+  -- the physical curve agrees with the factored form near `λ`
+  have heq : (fun λ => B.spectralRadianceWave c λ)
+      =ᶠ[𝓝 λ] (fun λ => B.wavePrefactor c
+        * wienProfile 5 (B.waveVar c λ)) := by
+    apply Filter.eventually_of_mem (Ioi_mem_nhds hλ)
     intro y hy
     rw [mem_Ioi] at hy
-    exact spectralRadianceWave_eq_profile h c kB T y hh hc hk hT hy
+    exact spectralRadianceWave_eq_profile B c y hT hy
   exact hC.congr_of_eventuallyEq heq
 
 /-- Critical-point equation for the wavelength curve: `deriv = 0` iff the
   dimensionless variable satisfies the `n = 5` Wien equation. -/
-theorem wave_crit_iff (h c kB T lam : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) (hlam : 0 < lam) :
-    deriv (fun lam => spectralRadianceWave h c kB lam T) lam = 0
-      ↔ waveVar h c kB T lam
-        = 5 * (1 - Real.exp (-(waveVar h c kB T lam))) := by
-  have hC0 : wavePrefactor h c kB T ≠ 0 :=
-    ne_of_gt (wavePrefactor_pos h c kB T hh hc hk hT)
-  have hK0 : (-(h * c / (kB * T)) / lam ^ 2) ≠ 0 := by
+theorem wave_crit_iff (B : BlackBody) (c : SpeedOfLight) (λ : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hλ : 0 < λ) :
+    deriv (fun λ => B.spectralRadianceWave c λ) λ = 0
+      ↔ B.waveVar c λ = 5 * (1 - Real.exp (-(B.waveVar c λ))) := by
+  have hC0 : B.wavePrefactor c ≠ 0 :=
+    ne_of_gt (wavePrefactor_pos B c hT)
+  have hK0 : (-((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) / λ ^ 2) ≠ 0 := by
     apply div_ne_zero
-    · exact neg_ne_zero.mpr (ne_of_gt (div_pos (mul_pos hh hc) (mul_pos hk hT)))
-    · exact pow_ne_zero 2 (ne_of_gt hlam)
-  have hx : 0 < waveVar h c kB T lam := waveVar_pos h c kB T lam hh hc hk hT hlam
-  rw [(hasDerivAt_wave h c kB T lam hh hc hk hT hlam).deriv]
+    · exact neg_ne_zero.mpr (ne_of_gt (div_pos (mul_pos h_pos c.val_pos)
+        (mul_pos kB_pos hT)))
+    · exact pow_ne_zero 2 (ne_of_gt hλ)
+  have hx : 0 < B.waveVar c λ := waveVar_pos B c λ hT hλ
+  rw [(hasDerivAt_wave B c λ hT hλ).deriv]
   constructor
   · intro hzero
     have hmul := (mul_eq_zero.mp hzero).resolve_left hC0
     have hderiv := (mul_eq_zero.mp hmul).resolve_right hK0
     have hcrit := (wienProfile_crit_iff 5 five_ge_one
-      (waveVar h c kB T lam) hx).mp hderiv
+      (B.waveVar c λ) hx).mp hderiv
     simpa using hcrit
   · intro hsol
-    have hderiv : deriv (wienProfile 5) (waveVar h c kB T lam) = 0 :=
-      (wienProfile_crit_iff 5 five_ge_one (waveVar h c kB T lam) hx).mpr
+    have hderiv : deriv (wienProfile 5) (B.waveVar c λ) = 0 :=
+      (wienProfile_crit_iff 5 five_ge_one (B.waveVar c λ) hx).mpr
         (by simpa using hsol)
     rw [hderiv, zero_mul, mul_zero]
 
 /-- Derivative of the frequency curve at `ν > 0`, via the chain rule. -/
-lemma hasDerivAt_freq (h c kB T nu : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) (hν : 0 < nu) :
-    HasDerivAt (fun nu => spectralRadianceFreq h c kB nu T)
-      (freqPrefactor h c kB T
-        * (deriv (wienProfile 3) (freqVar h kB T nu) * (h / (kB * T)))) nu := by
-  have hx : 0 < freqVar h kB T nu := freqVar_pos h kB T nu hh hk hT hν
-  have hexp_gt : (1 : ℝ) < Real.exp (freqVar h kB T nu) := by
+lemma hasDerivAt_freq (B : BlackBody) (c : SpeedOfLight) (ν : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hν : 0 < ν) :
+    HasDerivAt (fun ν => B.spectralRadiance c ν)
+      (B.freqPrefactor c
+        * (deriv (wienProfile 3) (B.freqVar ν)
+          * ((h : ℝ) / (kB * (B.T : ℝ))))) ν := by
+  have hx : 0 < B.freqVar ν := freqVar_pos B ν hT hν
+  have hexp_gt : (1 : ℝ) < Real.exp (B.freqVar ν) := by
     have hlt := Real.exp_strictMono hx
     rwa [Real.exp_zero] at hlt
-  have he : Real.exp (freqVar h kB T nu) - 1 ≠ 0 :=
+  have he : Real.exp (B.freqVar ν) - 1 ≠ 0 :=
     ne_of_gt (sub_pos.mpr hexp_gt)
-  have hinner : HasDerivAt (fun nu => h / (kB * T) * nu)
-      (0 * nu + h / (kB * T) * 1) nu :=
-    (hasDerivAt_const nu (h / (kB * T))).mul (hasDerivAt_id' nu)
-  have hpt : h / (kB * T) * nu = freqVar h kB T nu := by
+  have hinner : HasDerivAt (fun ν => (h : ℝ) / (kB * (B.T : ℝ)) * ν)
+      (0 * ν + (h : ℝ) / (kB * (B.T : ℝ)) * 1) ν :=
+    (hasDerivAt_const ν ((h : ℝ) / (kB * (B.T : ℝ)))).mul (hasDerivAt_id' ν)
+  have hpt : (h : ℝ) / (kB * (B.T : ℝ)) * ν = B.freqVar ν := by
     unfold freqVar
     ring
-  have hept : Real.exp (h / (kB * T) * nu) - 1 ≠ 0 := by
+  have hept : Real.exp ((h : ℝ) / (kB * (B.T : ℝ)) * ν) - 1 ≠ 0 := by
     rw [hpt]
     exact he
-  have hprof := hasDerivAt_wienProfile 3 (h / (kB * T) * nu) hept
-  have hcomp : HasDerivAt (wienProfile 3 ∘ (fun nu => h / (kB * T) * nu))
-      (deriv (wienProfile 3) (h / (kB * T) * nu)
-        * (0 * nu + h / (kB * T) * 1)) nu := by
-    have hcc := HasDerivAt.comp nu hprof hinner
+  have hprof := hasDerivAt_wienProfile 3
+    ((h : ℝ) / (kB * (B.T : ℝ)) * ν) hept
+  have hcomp : HasDerivAt
+      (wienProfile 3 ∘ (fun ν => (h : ℝ) / (kB * (B.T : ℝ)) * ν))
+      (deriv (wienProfile 3) ((h : ℝ) / (kB * (B.T : ℝ)) * ν)
+        * (0 * ν + (h : ℝ) / (kB * (B.T : ℝ)) * 1)) ν := by
+    have hcc := HasDerivAt.comp ν hprof hinner
     rwa [← hprof.deriv] at hcc
   have hC : HasDerivAt
-      (fun nu => freqPrefactor h c kB T * wienProfile 3 (freqVar h kB T nu))
-      (freqPrefactor h c kB T
-        * (deriv (wienProfile 3) (freqVar h kB T nu) * (h / (kB * T)))) nu := by
-    have hev : (wienProfile 3 ∘ (fun nu => h / (kB * T) * nu))
-        =ᶠ[𝓝 nu] (fun nu => wienProfile 3 (freqVar h kB T nu)) := by
-      apply Filter.eventually_of_mem (Ioi_mem_nhds hν)
-      intro y hy
-      rw [mem_Ioi] at hy
-      have hAy : h / (kB * T) * y = freqVar h kB T y := by
-        unfold freqVar
-        ring
-      simp only [Function.comp_apply]
-      rw [hAy]
+      (fun ν => B.freqPrefactor c * wienProfile 3 (B.freqVar ν))
+      (B.freqPrefactor c
+        * (deriv (wienProfile 3) (B.freqVar ν)
+          * ((h : ℝ) / (kB * (B.T : ℝ))))) ν := by
     have hcomp2 := hcomp.congr_of_eventuallyEq hev.symm
     rw [hpt] at hcomp2
-    have hder : deriv (wienProfile 3) (freqVar h kB T nu)
-          * (0 * nu + h / (kB * T) * 1)
-        = deriv (wienProfile 3) (freqVar h kB T nu) * (h / (kB * T)) := by
-      ring
+    have hder : deriv (wienProfile 3) (B.freqVar ν)
+          * (0 * ν + (h : ℝ) / (kB * (B.T : ℝ)) * 1)
+        = deriv (wienProfile 3) (B.freqVar ν)
+          * ((h : ℝ) / (kB * (B.T : ℝ))) := by ring
     have hcomp3 := hcomp2.congr_deriv hder
-    exact hcomp3.const_mul (freqPrefactor h c kB T)
-  have heq : (fun nu => spectralRadianceFreq h c kB nu T)
-      =ᶠ[𝓝 nu] (fun nu => freqPrefactor h c kB T
-        * wienProfile 3 (freqVar h kB T nu)) := by
+    exact hcomp3.const_mul (B.freqPrefactor c)
+  have heq : (fun ν => B.spectralRadiance c ν)
+      =ᶠ[𝓝 ν] (fun ν => B.freqPrefactor c
+        * wienProfile 3 (B.freqVar ν)) := by
     apply Filter.eventually_of_mem (Ioi_mem_nhds hν)
     intro y hy
     rw [mem_Ioi] at hy
-    exact spectralRadianceFreq_eq_profile h c kB T y hh hc hk hT hy
+    exact spectralRadiance_eq_profile B c y hT hy
   exact hC.congr_of_eventuallyEq heq
 
 /-- Critical-point equation for the frequency curve: `deriv = 0` iff the
   dimensionless variable satisfies the `n = 3` Wien equation. -/
-theorem freq_crit_iff (h c kB T nu : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) (hν : 0 < nu) :
-    deriv (fun nu => spectralRadianceFreq h c kB nu T) nu = 0
-      ↔ freqVar h kB T nu
-        = 3 * (1 - Real.exp (-(freqVar h kB T nu))) := by
-  have hC0 : freqPrefactor h c kB T ≠ 0 :=
-    ne_of_gt (freqPrefactor_pos h c kB T hh hc hk hT)
-  have hK0 : (h / (kB * T)) ≠ 0 :=
-    div_ne_zero (ne_of_gt hh) (mul_ne_zero (ne_of_gt hk) (ne_of_gt hT))
-  have hx : 0 < freqVar h kB T nu := freqVar_pos h kB T nu hh hk hT hν
-  rw [(hasDerivAt_freq h c kB T nu hh hc hk hT hν).deriv]
+theorem freq_crit_iff (B : BlackBody) (c : SpeedOfLight) (ν : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hν : 0 < ν) :
+    deriv (fun ν => B.spectralRadiance c ν) ν = 0
+      ↔ B.freqVar ν = 3 * (1 - Real.exp (-(B.freqVar ν))) := by
+  have hC0 : B.freqPrefactor c ≠ 0 :=
+    ne_of_gt (freqPrefactor_pos B c hT)
+  have hK0 : ((h : ℝ) / (kB * (B.T : ℝ))) ≠ 0 :=
+    div_ne_zero (ne_of_gt h_pos)
+      (mul_ne_zero (ne_of_gt kB_pos) (ne_of_gt hT))
+  have hx : 0 < B.freqVar ν := freqVar_pos B ν hT hν
+  rw [(hasDerivAt_freq B c ν hT hν).deriv]
   constructor
   · intro hzero
     have hmul := (mul_eq_zero.mp hzero).resolve_left hC0
     have hderiv := (mul_eq_zero.mp hmul).resolve_right hK0
     have hcrit := (wienProfile_crit_iff 3 three_ge_one
-      (freqVar h kB T nu) hx).mp hderiv
+      (B.freqVar ν) hx).mp hderiv
     simpa using hcrit
   · intro hsol
-    have hderiv : deriv (wienProfile 3) (freqVar h kB T nu) = 0 :=
-      (wienProfile_crit_iff 3 three_ge_one (freqVar h kB T nu) hx).mpr
+    have hderiv : deriv (wienProfile 3) (B.freqVar ν) = 0 :=
+      (wienProfile_crit_iff 3 three_ge_one (B.freqVar ν) hx).mpr
         (by simpa using hsol)
     rw [hderiv, zero_mul, mul_zero]
 
@@ -1047,99 +1045,99 @@ hits the Wien root.
 -/
 
 /-- The wavelength variable tends to `0⁺` as `λ → ∞`. -/
-lemma waveVar_tendsto_nhdsWithin_atTop (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun lam => waveVar h c kB T lam) atTop (𝓝[>] (0 : ℝ)) := by
-  have hK : (0 : ℝ) < h * c / (kB * T) :=
-    div_pos (mul_pos hh hc) (mul_pos hk hT)
-  have hfun : ∀ lam : ℝ,
-      waveVar h c kB T lam = (h * c / (kB * T)) * lam⁻¹ := by
-    intro lam
+lemma waveVar_tendsto_nhdsWithin_atTop (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun λ => B.waveVar c λ) atTop (𝓝[>] (0 : ℝ)) := by
+  have hK : (0 : ℝ) < (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) :=
+    div_pos (mul_pos h_pos c.val_pos) (mul_pos kB_pos hT)
+  have hfun : ∀ λ : ℝ,
+      B.waveVar c λ = ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) * λ⁻¹ := by
+    intro λ
     unfold waveVar
-    have hlam : lam = 0 ∨ lam ≠ 0 := eq_or_ne lam 0
-    rcases hlam with rfl | hne
+    have hλ : λ = 0 ∨ λ ≠ 0 := eq_or_ne λ 0
+    rcases hλ with rfl | hne
     · simp
-    · have hk' : kB ≠ 0 := ne_of_gt hk
-      have hT' : T ≠ 0 := ne_of_gt hT
+    · have hk' : kB ≠ 0 := ne_of_gt kB_pos
+      have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
       field_simp
-  have hbase : Tendsto (fun lam : ℝ => (h * c / (kB * T)) * lam⁻¹) atTop (𝓝 0) := by
-    have h := tendsto_inv_atTop_zero.const_mul (h * c / (kB * T))
+  have hbase : Tendsto
+      (fun λ : ℝ => ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) * λ⁻¹) atTop (𝓝 0) := by
+    have h := tendsto_inv_atTop_zero.const_mul
+      ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)))
     simpa using h
-  have hpos : ∀ᶠ lam : ℝ in atTop, (h * c / (kB * T)) * lam⁻¹ ∈ Ioi (0 : ℝ) := by
-    filter_upwards [eventually_gt_atTop 0] with lam hlam
-    exact mem_Ioi.mpr (mul_pos hK (inv_pos.mpr hlam))
+  have hpos : ∀ᶠ λ : ℝ in atTop,
+      ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) * λ⁻¹ ∈ Ioi (0 : ℝ) := by
+    filter_upwards [eventually_gt_atTop 0] with λ hλ
+    exact mem_Ioi.mpr (mul_pos hK (inv_pos.mpr hλ))
   have hlim := tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within
     _ hbase hpos
-  exact hlim.congr (fun lam => (hfun lam).symm)
+  exact hlim.congr (fun λ => (hfun λ).symm)
 
 /-- The wavelength variable tends to `∞` as `λ → 0⁺`. -/
-lemma waveVar_tendsto_atTop_nhdsWithin (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun lam => waveVar h c kB T lam) (𝓝[>] (0 : ℝ)) atTop := by
-  have hK : (0 : ℝ) < h * c / (kB * T) :=
-    div_pos (mul_pos hh hc) (mul_pos hk hT)
-  have hfun : ∀ lam : ℝ,
-      waveVar h c kB T lam = lam⁻¹ * (h * c / (kB * T)) := by
-    intro lam
+lemma waveVar_tendsto_atTop_nhdsWithin (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun λ => B.waveVar c λ) (𝓝[>] (0 : ℝ)) atTop := by
+  have hK : (0 : ℝ) < (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)) :=
+    div_pos (mul_pos h_pos c.val_pos) (mul_pos kB_pos hT)
+  have hfun : ∀ λ : ℝ,
+      B.waveVar c λ = λ⁻¹ * ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ))) := by
+    intro λ
     unfold waveVar
-    rcases eq_or_ne lam 0 with rfl | hne
+    rcases eq_or_ne λ 0 with rfl | hne
     · simp
-    · have hk' : kB ≠ 0 := ne_of_gt hk
-      have hT' : T ≠ 0 := ne_of_gt hT
+    · have hk' : kB ≠ 0 := ne_of_gt kB_pos
+      have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
       field_simp
-  have hlim : Tendsto (fun lam : ℝ => lam⁻¹ * (h * c / (kB * T))) (𝓝[>] 0) atTop :=
+  have hlim : Tendsto
+      (fun λ : ℝ => λ⁻¹ * ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ)))) (𝓝[>] 0) atTop :=
     tendsto_inv_nhdsGT_zero.atTop_mul_const hK
-  exact hlim.congr (fun lam => (hfun lam).symm)
+  exact hlim.congr (fun λ => (hfun λ).symm)
 
-/-- The frequency variable tends to `∞` as `ν → ∞` (linear with positive
-  slope). -/
-lemma freqVar_tendsto_atTop_atTop (h kB T : ℝ) (hh : 0 < h)
-    (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun nu => freqVar h kB T nu) atTop atTop := by
-  have hK : (0 : ℝ) < h / (kB * T) :=
-    div_pos hh (mul_pos hk hT)
-  have hfun : ∀ nu : ℝ, freqVar h kB T nu = nu * (h / (kB * T)) := by
-    intro nu
+/-- The frequency variable tends to `∞` as `ν → ∞` (linear with positive slope). -/
+lemma freqVar_tendsto_atTop_atTop (B : BlackBody)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun ν => B.freqVar ν) atTop atTop := by
+  have hK : (0 : ℝ) < (h : ℝ) / (kB * (B.T : ℝ)) :=
+    div_pos h_pos (mul_pos kB_pos hT)
+  have hfun : ∀ ν : ℝ, B.freqVar ν = ν * ((h : ℝ) / (kB * (B.T : ℝ))) := by
+    intro ν
     unfold freqVar
     ring
-  have hlim : Tendsto (fun nu : ℝ => nu * (h / (kB * T))) atTop atTop :=
+  have hlim : Tendsto (fun ν : ℝ => ν * ((h : ℝ) / (kB * (B.T : ℝ)))) atTop atTop :=
     tendsto_id.atTop_mul_const hK
-  exact hlim.congr (fun nu => (hfun nu).symm)
+  exact hlim.congr (fun ν => (hfun ν).symm)
 
-/-- The frequency variable tends to `0⁺` as `ν → 0⁺` (linear with positive
-  slope). -/
-lemma freqVar_tendsto_nhdsWithin (h kB T : ℝ) (hh : 0 < h)
-    (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun nu => freqVar h kB T nu) (𝓝[>] (0 : ℝ)) (𝓝[>] (0 : ℝ)) := by
-  have hK : (0 : ℝ) < h / (kB * T) :=
-    div_pos hh (mul_pos hk hT)
-  have hfun : ∀ nu : ℝ, freqVar h kB T nu = (h / (kB * T)) * nu := by
-    intro nu
+/-- The frequency variable tends to `0⁺` as `ν → 0⁺` (linear with positive slope). -/
+lemma freqVar_tendsto_nhdsWithin (B : BlackBody)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun ν => B.freqVar ν) (𝓝[>] (0 : ℝ)) (𝓝[>] (0 : ℝ)) := by
+  have hK : (0 : ℝ) < (h : ℝ) / (kB * (B.T : ℝ)) :=
+    div_pos h_pos (mul_pos kB_pos hT)
+  have hfun : ∀ ν : ℝ, B.freqVar ν = ((h : ℝ) / (kB * (B.T : ℝ))) * ν := by
+    intro ν
     unfold freqVar
     ring
-  have hbase : Tendsto (fun nu : ℝ => (h / (kB * T)) * nu) (𝓝[>] 0) (𝓝 0) := by
+  have hbase : Tendsto (fun ν : ℝ => ((h : ℝ) / (kB * (B.T : ℝ))) * ν) (𝓝[>] 0) (𝓝 0) := by
     have hid : Tendsto id (𝓝[>] (0 : ℝ)) (𝓝 0) :=
       tendsto_id.mono_right nhdsWithin_le_nhds
-    have h := hid.const_mul (h / (kB * T))
+    have h := hid.const_mul ((h : ℝ) / (kB * (B.T : ℝ)))
     simpa using h
   have hlim := tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within
     _ hbase (a := (0 : ℝ)) (s := Ioi 0) (l := 𝓝[>] (0 : ℝ)) ?_
-  · exact hlim.congr (fun nu => (hfun nu).symm)
-  · filter_upwards [self_mem_nhdsWithin] with nu hnu
-    exact mem_Ioi.mpr (mul_pos hK hnu)
+  · exact hlim.congr (fun ν => (hfun ν).symm)
+  · filter_upwards [self_mem_nhdsWithin] with ν hν
+    exact mem_Ioi.mpr (mul_pos hK hν)
 
 /-- The wavelength curve is continuous on `(0, ∞)`. -/
-lemma spectralRadianceWave_continuousOn (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    ContinuousOn (fun lam => spectralRadianceWave h c kB lam T) (Ioi 0) := by
-  have heq : EqOn (fun lam => spectralRadianceWave h c kB lam T)
-      (fun lam => wavePrefactor h c kB T * wienProfile 5 (waveVar h c kB T lam))
-      (Ioi 0) := by
-    intro lam hlam
-    exact spectralRadianceWave_eq_profile h c kB T lam hh hc hk hT hlam
+lemma spectralRadianceWave_continuousOn (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    ContinuousOn (fun λ => B.spectralRadianceWave c λ) (Ioi 0) := by
+  have heq : EqOn (fun λ => B.spectralRadianceWave c λ)
+      (fun λ => B.wavePrefactor c * wienProfile 5 (B.waveVar c λ)) (Ioi 0) := by
+    intro λ hλ
+    exact spectralRadianceWave_eq_profile B c λ hT hλ
   have hcont : ContinuousOn
-      (fun lam => wavePrefactor h c kB T * wienProfile 5 (waveVar h c kB T lam))
-      (Ioi 0) := by
+      (fun λ => B.wavePrefactor c * wienProfile 5 (B.waveVar c λ)) (Ioi 0) := by
     apply ContinuousOn.mul continuousOn_const _
     apply (wienProfile_continuousOn 5).comp _ _
     · unfold waveVar
@@ -1147,204 +1145,194 @@ lemma spectralRadianceWave_continuousOn (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < 
       · apply ContinuousOn.mul _ continuousOn_const
         apply ContinuousOn.mul _ continuousOn_const
         exact continuousOn_id
-      · intro lam hlam
-        exact mul_ne_zero (mul_ne_zero (ne_of_gt hlam) (ne_of_gt hk))
+      · intro λ hλ
+        exact mul_ne_zero (mul_ne_zero (ne_of_gt hλ) (ne_of_gt kB_pos))
           (ne_of_gt hT)
-    · intro lam hlam
-      exact waveVar_pos h c kB T lam hh hc hk hT hlam
+    · intro λ hλ
+      exact waveVar_pos B c λ hT hλ
   exact hcont.congr heq
 
 /-- The frequency curve is continuous on `(0, ∞)`. -/
-lemma spectralRadianceFreq_continuousOn (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    ContinuousOn (fun nu => spectralRadianceFreq h c kB nu T) (Ioi 0) := by
-  have heq : EqOn (fun nu => spectralRadianceFreq h c kB nu T)
-      (fun nu => freqPrefactor h c kB T * wienProfile 3 (freqVar h kB T nu))
-      (Ioi 0) := by
-    intro nu hnu
-    exact spectralRadianceFreq_eq_profile h c kB T nu hh hc hk hT hnu
+lemma spectralRadiance_continuousOn (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    ContinuousOn (fun ν => B.spectralRadiance c ν) (Ioi 0) := by
+  have heq : EqOn (fun ν => B.spectralRadiance c ν)
+      (fun ν => B.freqPrefactor c * wienProfile 3 (B.freqVar ν)) (Ioi 0) := by
+    intro ν hν
+    exact spectralRadiance_eq_profile B c ν hT hν
   have hcont : ContinuousOn
-      (fun nu => freqPrefactor h c kB T * wienProfile 3 (freqVar h kB T nu))
-      (Ioi 0) := by
+      (fun ν => B.freqPrefactor c * wienProfile 3 (B.freqVar ν)) (Ioi 0) := by
     apply ContinuousOn.mul continuousOn_const _
     apply (wienProfile_continuousOn 3).comp _ _
     · unfold freqVar
       apply ContinuousOn.div _ continuousOn_const _
       · apply ContinuousOn.mul continuousOn_const continuousOn_id
-      · intro nu hnu
-        exact mul_ne_zero (ne_of_gt hk) (ne_of_gt hT)
-    · intro nu hnu
-      exact freqVar_pos h kB T nu hh hk hT hnu
+      · intro ν hν
+        exact mul_ne_zero (ne_of_gt kB_pos) (ne_of_gt hT)
+    · intro ν hν
+      exact freqVar_pos B ν hT hν
   exact hcont.congr heq
 
 /-- The wavelength curve vanishes at infinity: `B(λ, T) → 0` as `λ → ∞`. -/
-lemma spectralRadianceWave_tendsto_zero_atTop (h c kB T : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun lam => spectralRadianceWave h c kB lam T) atTop (𝓝 0) := by
-  have hxlim := waveVar_tendsto_nhdsWithin_atTop h c kB T hh hc hk hT
-  have hflim : Tendsto (fun lam : ℝ => wienProfile 5 (waveVar h c kB T lam))
-      atTop (𝓝 0) :=
+lemma spectralRadianceWave_tendsto_zero_atTop (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun λ => B.spectralRadianceWave c λ) atTop (𝓝 0) := by
+  have hxlim := waveVar_tendsto_nhdsWithin_atTop B c hT
+  have hflim : Tendsto (fun λ : ℝ => wienProfile 5 (B.waveVar c λ)) atTop (𝓝 0) :=
     (wienProfile_tendsto_nhdsWithin_zero 5 (by decide)).comp hxlim
-  have heq : (fun lam => spectralRadianceWave h c kB lam T) =ᶠ[atTop]
-      (fun lam => wavePrefactor h c kB T
-        * wienProfile 5 (waveVar h c kB T lam)) := by
-    filter_upwards [eventually_gt_atTop 0] with lam hlam
-    exact spectralRadianceWave_eq_profile h c kB T lam hh hc hk hT hlam
-  have hC := hflim.const_mul (wavePrefactor h c kB T)
+  have heq : (fun λ => B.spectralRadianceWave c λ) =ᶠ[atTop]
+      (fun λ => B.wavePrefactor c * wienProfile 5 (B.waveVar c λ)) := by
+    filter_upwards [eventually_gt_atTop 0] with λ hλ
+    exact spectralRadianceWave_eq_profile B c λ hT hλ
+  have hC := hflim.const_mul (B.wavePrefactor c)
   rw [mul_zero] at hC
   exact hC.congr' heq.symm
 
 /-- The wavelength curve vanishes at the origin: `B(λ, T) → 0` as `λ → 0⁺`. -/
-lemma spectralRadianceWave_tendsto_nhdsWithin_zero (h c kB T : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun lam => spectralRadianceWave h c kB lam T) (𝓝[>] 0) (𝓝 0) := by
-  have hxlim := waveVar_tendsto_atTop_nhdsWithin h c kB T hh hc hk hT
-  have hflim : Tendsto (fun lam : ℝ => wienProfile 5 (waveVar h c kB T lam))
-      (𝓝[>] 0) (𝓝 0) :=
+lemma spectralRadianceWave_tendsto_nhdsWithin_zero (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun λ => B.spectralRadianceWave c λ) (𝓝[>] 0) (𝓝 0) := by
+  have hxlim := waveVar_tendsto_atTop_nhdsWithin B c hT
+  have hflim : Tendsto (fun λ : ℝ => wienProfile 5 (B.waveVar c λ)) (𝓝[>] 0) (𝓝 0) :=
     (wienProfile_tendsto_zero_atTop 5).comp hxlim
-  have heq : (fun lam => spectralRadianceWave h c kB lam T) =ᶠ[𝓝[>] (0 : ℝ)]
-      (fun lam => wavePrefactor h c kB T
-        * wienProfile 5 (waveVar h c kB T lam)) := by
-    filter_upwards [self_mem_nhdsWithin] with lam hlam
-    exact spectralRadianceWave_eq_profile h c kB T lam hh hc hk hT hlam
-  have hC := hflim.const_mul (wavePrefactor h c kB T)
+  have heq : (fun λ => B.spectralRadianceWave c λ) =ᶠ[𝓝[>] (0 : ℝ)]
+      (fun λ => B.wavePrefactor c * wienProfile 5 (B.waveVar c λ)) := by
+    filter_upwards [self_mem_nhdsWithin] with λ hλ
+    exact spectralRadianceWave_eq_profile B c λ hT hλ
+  have hC := hflim.const_mul (B.wavePrefactor c)
   rw [mul_zero] at hC
   exact hC.congr' heq.symm
 
 /-- The frequency curve vanishes at infinity: `B(ν, T) → 0` as `ν → ∞`. -/
-lemma spectralRadianceFreq_tendsto_zero_atTop (h c kB T : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun nu => spectralRadianceFreq h c kB nu T) atTop (𝓝 0) := by
-  have hxlim := freqVar_tendsto_atTop_atTop h kB T hh hk hT
-  have hflim : Tendsto (fun nu : ℝ => wienProfile 3 (freqVar h kB T nu))
-      atTop (𝓝 0) :=
+lemma spectralRadiance_tendsto_zero_atTop (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun ν => B.spectralRadiance c ν) atTop (𝓝 0) := by
+  have hxlim := freqVar_tendsto_atTop_atTop B hT
+  have hflim : Tendsto (fun ν : ℝ => wienProfile 3 (B.freqVar ν)) atTop (𝓝 0) :=
     (wienProfile_tendsto_zero_atTop 3).comp hxlim
-  have heq : (fun nu => spectralRadianceFreq h c kB nu T) =ᶠ[atTop]
-      (fun nu => freqPrefactor h c kB T
-        * wienProfile 3 (freqVar h kB T nu)) := by
-    filter_upwards [eventually_gt_atTop 0] with nu hnu
-    exact spectralRadianceFreq_eq_profile h c kB T nu hh hc hk hT hnu
-  have hC := hflim.const_mul (freqPrefactor h c kB T)
+  have heq : (fun ν => B.spectralRadiance c ν) =ᶠ[atTop]
+      (fun ν => B.freqPrefactor c * wienProfile 3 (B.freqVar ν)) := by
+    filter_upwards [eventually_gt_atTop 0] with ν hν
+    exact spectralRadiance_eq_profile B c ν hT hν
+  have hC := hflim.const_mul (B.freqPrefactor c)
   rw [mul_zero] at hC
   exact hC.congr' heq.symm
 
 /-- The frequency curve vanishes at the origin: `B(ν, T) → 0` as `ν → 0⁺`. -/
-lemma spectralRadianceFreq_tendsto_nhdsWithin_zero (h c kB T : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT : 0 < T) :
-    Tendsto (fun nu => spectralRadianceFreq h c kB nu T) (𝓝[>] 0) (𝓝 0) := by
-  have hxlim := freqVar_tendsto_nhdsWithin h kB T hh hk hT
-  have hflim : Tendsto (fun nu : ℝ => wienProfile 3 (freqVar h kB T nu))
-      (𝓝[>] 0) (𝓝 0) :=
+lemma spectralRadiance_tendsto_nhdsWithin_zero (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    Tendsto (fun ν => B.spectralRadiance c ν) (𝓝[>] 0) (𝓝 0) := by
+  have hxlim := freqVar_tendsto_nhdsWithin B hT
+  have hflim : Tendsto (fun ν : ℝ => wienProfile 3 (B.freqVar ν)) (𝓝[>] 0) (𝓝 0) :=
     (wienProfile_tendsto_nhdsWithin_zero 3 (by decide)).comp hxlim
-  have heq : (fun nu => spectralRadianceFreq h c kB nu T) =ᶠ[𝓝[>] (0 : ℝ)]
-      (fun nu => freqPrefactor h c kB T
-        * wienProfile 3 (freqVar h kB T nu)) := by
-    filter_upwards [self_mem_nhdsWithin] with nu hnu
-    exact spectralRadianceFreq_eq_profile h c kB T nu hh hc hk hT hnu
-  have hC := hflim.const_mul (freqPrefactor h c kB T)
+  have heq : (fun ν => B.spectralRadiance c ν) =ᶠ[𝓝[>] (0 : ℝ)]
+      (fun ν => B.freqPrefactor c * wienProfile 3 (B.freqVar ν)) := by
+    filter_upwards [self_mem_nhdsWithin] with ν hν
+    exact spectralRadiance_eq_profile B c ν hT hν
+  have hC := hflim.const_mul (B.freqPrefactor c)
   rw [mul_zero] at hC
   exact hC.congr' heq.symm
 
 /-- The wavelength curve attains its unique global maximum on `(0, ∞)` at
   `λ* = h c / (kB T x₅)`: the peak of the blackbody spectrum. -/
-theorem spectralRadianceWave_isMaxOn (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    IsMaxOn (fun lam => spectralRadianceWave h c kB lam T) (Ioi 0)
-      (h * c / (kB * T * wienConstant5)) := by
+theorem spectralRadianceWave_isMaxOn (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    IsMaxOn (fun λ => B.spectralRadianceWave c λ) (Ioi 0)
+      ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ) * wienConstant5)) := by
   have hrpos : 0 < wienConstant5 := wienConstant5_pos
-  have hlamstar : 0 < h * c / (kB * T * wienConstant5) :=
-    div_pos (mul_pos hh hc) (mul_pos (mul_pos hk hT) hrpos)
-  have hstar : waveVar h c kB T (h * c / (kB * T * wienConstant5))
+  have hλstar : 0 < (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ) * wienConstant5) :=
+    div_pos (mul_pos h_pos c.val_pos) (mul_pos (mul_pos kB_pos hT) hrpos)
+  have hstar : B.waveVar c ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ) * wienConstant5))
       = wienConstant5 := by
     unfold waveVar
-    have hk' : kB ≠ 0 := ne_of_gt hk
-    have hT' : T ≠ 0 := ne_of_gt hT
+    have hk' : kB ≠ 0 := ne_of_gt kB_pos
+    have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
     have hx5 : wienConstant5 ≠ 0 := ne_of_gt hrpos
-    have hden : kB * T * wienConstant5 ≠ 0 :=
+    have hden : kB * (B.T : ℝ) * wienConstant5 ≠ 0 :=
       mul_ne_zero (mul_ne_zero hk' hT') hx5
     field_simp
-  have hC : 0 ≤ wavePrefactor h c kB T :=
-    le_of_lt (wavePrefactor_pos h c kB T hh hc hk hT)
-  intro lam hlam
-  change spectralRadianceWave h c kB lam T
-    ≤ spectralRadianceWave h c kB (h * c / (kB * T * wienConstant5)) T
-  have hx : 0 < waveVar h c kB T lam :=
-    waveVar_pos h c kB T lam hh hc hk hT hlam
+  have hC : 0 ≤ B.wavePrefactor c :=
+    le_of_lt (wavePrefactor_pos B c hT)
+  intro λ hλ
+  change B.spectralRadianceWave c λ
+    ≤ B.spectralRadianceWave c
+      ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ) * wienConstant5))
+  have hx : 0 < B.waveVar c λ :=
+    waveVar_pos B c λ hT hλ
   have hprof := (isMaxOn_iff.mp (wienProfile_isMaxOn 5 (by decide))) _ hx
-  have hprof' : wienProfile 5 (waveVar h c kB T lam)
+  have hprof' : wienProfile 5 (B.waveVar c λ)
       ≤ wienProfile 5 wienConstant5 := hprof
-  have e1 := spectralRadianceWave_eq_profile h c kB T lam hh hc hk hT hlam
-  have e2 := spectralRadianceWave_eq_profile h c kB T _ hh hc hk hT hlamstar
+  have e1 := spectralRadianceWave_eq_profile B c λ hT hλ
+  have e2 := spectralRadianceWave_eq_profile B c _ hT hλstar
   rw [e1, e2, hstar]
   exact mul_le_mul_of_nonneg_left hprof' hC
 
 /-- The frequency curve attains its unique global maximum on `(0, ∞)` at
   `ν* = kB T x₃ / h`. -/
-theorem spectralRadianceFreq_isMaxOn (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    IsMaxOn (fun nu => spectralRadianceFreq h c kB nu T) (Ioi 0)
-      (kB * T * wienConstant3 / h) := by
+theorem spectralRadiance_isMaxOn (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    IsMaxOn (fun ν => B.spectralRadiance c ν) (Ioi 0)
+      (kB * (B.T : ℝ) * wienConstant3 / (h : ℝ)) := by
   have hrpos : 0 < wienConstant3 := wienConstant3_pos
-  have hnustar : 0 < kB * T * wienConstant3 / h :=
-    div_pos (mul_pos (mul_pos hk hT) hrpos) hh
-  have hstar : freqVar h kB T (kB * T * wienConstant3 / h) = wienConstant3 := by
+  have hnustar : 0 < kB * (B.T : ℝ) * wienConstant3 / (h : ℝ) :=
+    div_pos (mul_pos (mul_pos kB_pos hT) hrpos) h_pos
+  have hstar : B.freqVar (kB * (B.T : ℝ) * wienConstant3 / (h : ℝ))
+      = wienConstant3 := by
     unfold freqVar
-    have hh' : h ≠ 0 := ne_of_gt hh
-    have hk' : kB ≠ 0 := ne_of_gt hk
-    have hT' : T ≠ 0 := ne_of_gt hT
+    have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
+    have hk' : kB ≠ 0 := ne_of_gt kB_pos
+    have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
     field_simp
-  have hC : 0 ≤ freqPrefactor h c kB T :=
-    le_of_lt (freqPrefactor_pos h c kB T hh hc hk hT)
-  intro nu hnu
-  change spectralRadianceFreq h c kB nu T
-    ≤ spectralRadianceFreq h c kB (kB * T * wienConstant3 / h) T
-  have hx : 0 < freqVar h kB T nu := freqVar_pos h kB T nu hh hk hT hnu
+  have hC : 0 ≤ B.freqPrefactor c :=
+    le_of_lt (freqPrefactor_pos B c hT)
+  intro ν hν
+  change B.spectralRadiance c ν
+    ≤ B.spectralRadiance c (kB * (B.T : ℝ) * wienConstant3 / (h : ℝ))
+  have hx : 0 < B.freqVar ν := freqVar_pos B ν hT hν
   have hprof := (isMaxOn_iff.mp (wienProfile_isMaxOn 3 (by decide))) _ hx
-  have hprof' : wienProfile 3 (freqVar h kB T nu)
+  have hprof' : wienProfile 3 (B.freqVar ν)
       ≤ wienProfile 3 wienConstant3 := hprof
-  have e1 := spectralRadianceFreq_eq_profile h c kB T nu hh hc hk hT hnu
-  have e2 := spectralRadianceFreq_eq_profile h c kB T _ hh hc hk hT hnustar
+  have e1 := spectralRadiance_eq_profile B c ν hT hν
+  have e2 := spectralRadiance_eq_profile B c _ hT hnustar
   rw [e1, e2, hstar]
   exact mul_le_mul_of_nonneg_left hprof' hC
 
 /-- The wavelength curve is bounded above on `(0, ∞)` (by its peak value). -/
-lemma spectralRadianceWave_bddAbove (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    BddAbove (Set.range (fun lam => spectralRadianceWave h c kB lam T)) := by
-  have hlamstar : 0 < h * c / (kB * T * wienConstant5) :=
-    div_pos (mul_pos hh hc)
-      (mul_pos (mul_pos hk hT) wienConstant5_pos)
-  refine ⟨spectralRadianceWave h c kB (h * c / (kB * T * wienConstant5)) T, ?_⟩
-  rintro _ ⟨lam, rfl⟩
-  change spectralRadianceWave h c kB lam T
-    ≤ spectralRadianceWave h c kB (h * c / (kB * T * wienConstant5)) T
-  by_cases hlam : 0 < lam
-  · exact (isMaxOn_iff.mp
-      (spectralRadianceWave_isMaxOn h c kB T hh hc hk hT)) lam hlam
-  · have h0 : spectralRadianceWave h c kB lam T = 0 :=
-      spectralRadianceWave_eq_zero_of_nonpos_wave h c kB lam T (not_lt.mp hlam)
+lemma spectralRadianceWave_bddAbove (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    BddAbove (Set.range (fun λ => B.spectralRadianceWave c λ)) := by
+  have hλstar : 0 < (h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ) * wienConstant5) :=
+    div_pos (mul_pos h_pos c.val_pos)
+      (mul_pos (mul_pos kB_pos hT) wienConstant5_pos)
+  refine ⟨B.spectralRadianceWave c
+    ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ) * wienConstant5)), ?_⟩
+  rintro _ ⟨λ, rfl⟩
+  change B.spectralRadianceWave c λ
+    ≤ B.spectralRadianceWave c
+      ((h : ℝ) * (c : ℝ) / (kB * (B.T : ℝ) * wienConstant5))
+  by_cases hλ : 0 < λ
+  · exact (isMaxOn_iff.mp (spectralRadianceWave_isMaxOn B c hT)) λ hλ
+  · have h0 : B.spectralRadianceWave c λ = 0 :=
+      spectralRadianceWave_eq_zero_of_nonpos_wave B c λ (not_lt.mp hλ)
     rw [h0]
-    exact le_of_lt
-      (spectralRadianceWave_pos h c kB _ T hh hc hk hlamstar hT)
+    exact le_of_lt (spectralRadianceWave_pos B c _ hλstar hT)
 
 /-- The frequency curve is bounded above on `(0, ∞)` (by its peak value). -/
-lemma spectralRadianceFreq_bddAbove (h c kB T : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) :
-    BddAbove (Set.range (fun nu => spectralRadianceFreq h c kB nu T)) := by
-  have hnustar : 0 < kB * T * wienConstant3 / h :=
-    div_pos (mul_pos (mul_pos hk hT) wienConstant3_pos) hh
-  refine ⟨spectralRadianceFreq h c kB (kB * T * wienConstant3 / h) T, ?_⟩
-  rintro _ ⟨nu, rfl⟩
-  change spectralRadianceFreq h c kB nu T
-    ≤ spectralRadianceFreq h c kB (kB * T * wienConstant3 / h) T
-  by_cases hnu : 0 < nu
-  · exact (isMaxOn_iff.mp
-      (spectralRadianceFreq_isMaxOn h c kB T hh hc hk hT)) nu hnu
-  · have h0 : spectralRadianceFreq h c kB nu T = 0 :=
-      spectralRadianceFreq_eq_zero_of_nonpos_freq h c kB nu T (not_lt.mp hnu)
+lemma spectralRadiance_bddAbove (B : BlackBody) (c : SpeedOfLight)
+    (hT : 0 < (B.T : ℝ)) :
+    BddAbove (Set.range (fun ν => B.spectralRadiance c ν)) := by
+  have hnustar : 0 < kB * (B.T : ℝ) * wienConstant3 / (h : ℝ) :=
+    div_pos (mul_pos (mul_pos kB_pos hT) wienConstant3_pos) h_pos
+  refine ⟨B.spectralRadiance c (kB * (B.T : ℝ) * wienConstant3 / (h : ℝ)), ?_⟩
+  rintro _ ⟨ν, rfl⟩
+  change B.spectralRadiance c ν
+    ≤ B.spectralRadiance c (kB * (B.T : ℝ) * wienConstant3 / (h : ℝ))
+  by_cases hν : 0 < ν
+  · exact (isMaxOn_iff.mp (spectralRadiance_isMaxOn B c hT)) ν hν
+  · have h0 : B.spectralRadiance c ν = 0 :=
+      spectralRadiance_eq_zero_of_nonpos_freq B c ν (not_lt.mp hν)
     rw [h0]
-    exact le_of_lt
-      (spectralRadianceFreq_pos h c kB _ T hh hc hk hnustar hT)
+    exact le_of_lt (spectralRadiance_pos B c _ hnustar hT)
 
 /-!
 
@@ -1356,107 +1344,105 @@ of the Wien equation, hence equal to the Wien root by uniqueness. The product
 likewise `ν / T = kB x₃ / h`.
 -/
 
-/-- Wien's displacement law (wavelength form) : critical wavelengths at different
+/-- Wien's displacement law (wavelength form): critical wavelengths at different
   temperatures satisfy `λ₁ T₁ = λ₂ T₂`. -/
-theorem wien_displacement_wave (h c kB T₁ T₂ lam₁ lam₂ : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT₁ : 0 < T₁) (hT₂ : 0 < T₂)
-    (hlam₁ : 0 < lam₁) (hlam₂ : 0 < lam₂)
-    (hcrit₁ : deriv (fun lam => spectralRadianceWave h c kB lam T₁) lam₁ = 0)
-    (hcrit₂ : deriv (fun lam => spectralRadianceWave h c kB lam T₂) lam₂ = 0) :
-    lam₁ * T₁ = lam₂ * T₂ := by
-  have hx₁ : 0 < waveVar h c kB T₁ lam₁ :=
-    waveVar_pos h c kB T₁ lam₁ hh hc hk hT₁ hlam₁
-  have hx₂ : 0 < waveVar h c kB T₂ lam₂ :=
-    waveVar_pos h c kB T₂ lam₂ hh hc hk hT₂ hlam₂
-  have e₁ := (wave_crit_iff h c kB T₁ lam₁ hh hc hk hT₁ hlam₁).mp hcrit₁
-  have e₂ := (wave_crit_iff h c kB T₂ lam₂ hh hc hk hT₂ hlam₂).mp hcrit₂
-  have hx₁' : wienH 5 (waveVar h c kB T₁ lam₁) = 0 := by
+theorem wien_displacement_wave (B₁ B₂ : BlackBody) (c : SpeedOfLight) (λ₁ λ₂ : ℝ)
+    (hT₁ : 0 < (B₁.T : ℝ)) (hT₂ : 0 < (B₂.T : ℝ))
+    (hλ₁ : 0 < λ₁) (hλ₂ : 0 < λ₂)
+    (hcrit₁ : deriv (fun λ => B₁.spectralRadianceWave c λ) λ₁ = 0)
+    (hcrit₂ : deriv (fun λ => B₂.spectralRadianceWave c λ) λ₂ = 0) :
+    λ₁ * (B₁.T : ℝ) = λ₂ * (B₂.T : ℝ) := by
+  have hx₁ : 0 < B₁.waveVar c λ₁ := waveVar_pos B₁ c λ₁ hT₁ hλ₁
+  have hx₂ : 0 < B₂.waveVar c λ₂ := waveVar_pos B₂ c λ₂ hT₂ hλ₂
+  have e₁ := (wave_crit_iff B₁ c λ₁ hT₁ hλ₁).mp hcrit₁
+  have e₂ := (wave_crit_iff B₂ c λ₂ hT₂ hλ₂).mp hcrit₂
+  have hx₁' : wienH 5 (B₁.waveVar c λ₁) = 0 := by
     unfold wienH
     linarith [e₁]
-  have hx₂' : wienH 5 (waveVar h c kB T₂ lam₂) = 0 := by
+  have hx₂' : wienH 5 (B₂.waveVar c λ₂) = 0 := by
     unfold wienH
     linarith [e₂]
   -- uniqueness forces the dimensionless variables to agree
   have huniq₁ := wienRoot_unique 5 five_gt_one _ hx₁ hx₁'
   have huniq₂ := wienRoot_unique 5 five_gt_one _ hx₂ hx₂'
-  have hxx : waveVar h c kB T₁ lam₁ = waveVar h c kB T₂ lam₂ := by
+  have hxx : B₁.waveVar c λ₁ = B₂.waveVar c λ₂ := by
     rw [huniq₁, huniq₂]
   -- hence `λ₁ T₁ = λ₂ T₂`
-  have hh' : h ≠ 0 := ne_of_gt hh
-  have hc' : c ≠ 0 := ne_of_gt hc
-  have hk' : kB ≠ 0 := ne_of_gt hk
+  have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
+  have hc' : (c : ℝ) ≠ 0 := ne_of_gt c.val_pos
+  have hk' : kB ≠ 0 := ne_of_gt kB_pos
   unfold waveVar at hxx
   field_simp at hxx ⊢
   linarith [hxx]
 
-/-- Wien's displacement law (frequency form) : critical frequencies at different
+/-- Wien's displacement law (frequency form): critical frequencies at different
   temperatures satisfy `ν₁ / T₁ = ν₂ / T₂`. -/
-theorem wien_displacement_freq (h c kB T₁ T₂ nu₁ nu₂ : ℝ) (hh : 0 < h)
-    (hc : 0 < c) (hk : 0 < kB) (hT₁ : 0 < T₁) (hT₂ : 0 < T₂)
-    (hν₁ : 0 < nu₁) (hν₂ : 0 < nu₂)
-    (hcrit₁ : deriv (fun nu => spectralRadianceFreq h c kB nu T₁) nu₁ = 0)
-    (hcrit₂ : deriv (fun nu => spectralRadianceFreq h c kB nu T₂) nu₂ = 0) :
-    nu₁ / T₁ = nu₂ / T₂ := by
-  have hx₁ : 0 < freqVar h kB T₁ nu₁ := freqVar_pos h kB T₁ nu₁ hh hk hT₁ hν₁
-  have hx₂ : 0 < freqVar h kB T₂ nu₂ := freqVar_pos h kB T₂ nu₂ hh hk hT₂ hν₂
-  have e₁ := (freq_crit_iff h c kB T₁ nu₁ hh hc hk hT₁ hν₁).mp hcrit₁
-  have e₂ := (freq_crit_iff h c kB T₂ nu₂ hh hc hk hT₂ hν₂).mp hcrit₂
-  have hx₁' : wienH 3 (freqVar h kB T₁ nu₁) = 0 := by
+theorem wien_displacement_freq (B₁ B₂ : BlackBody) (c : SpeedOfLight) (ν₁ ν₂ : ℝ)
+    (hT₁ : 0 < (B₁.T : ℝ)) (hT₂ : 0 < (B₂.T : ℝ))
+    (hν₁ : 0 < ν₁) (hν₂ : 0 < ν₂)
+    (hcrit₁ : deriv (fun ν => B₁.spectralRadiance c ν) ν₁ = 0)
+    (hcrit₂ : deriv (fun ν => B₂.spectralRadiance c ν) ν₂ = 0) :
+    ν₁ / (B₁.T : ℝ) = ν₂ / (B₂.T : ℝ) := by
+  have hx₁ : 0 < B₁.freqVar ν₁ := freqVar_pos B₁ ν₁ hT₁ hν₁
+  have hx₂ : 0 < B₂.freqVar ν₂ := freqVar_pos B₂ ν₂ hT₂ hν₂
+  have e₁ := (freq_crit_iff B₁ c ν₁ hT₁ hν₁).mp hcrit₁
+  have e₂ := (freq_crit_iff B₂ c ν₂ hT₂ hν₂).mp hcrit₂
+  have hx₁' : wienH 3 (B₁.freqVar ν₁) = 0 := by
     unfold wienH
     linarith [e₁]
-  have hx₂' : wienH 3 (freqVar h kB T₂ nu₂) = 0 := by
+  have hx₂' : wienH 3 (B₂.freqVar ν₂) = 0 := by
     unfold wienH
     linarith [e₂]
   have huniq₁ := wienRoot_unique 3 three_gt_one _ hx₁ hx₁'
   have huniq₂ := wienRoot_unique 3 three_gt_one _ hx₂ hx₂'
-  have hxx : freqVar h kB T₁ nu₁ = freqVar h kB T₂ nu₂ := by
+  have hxx : B₁.freqVar ν₁ = B₂.freqVar ν₂ := by
     rw [huniq₁, huniq₂]
-  have hh' : h ≠ 0 := ne_of_gt hh
-  have hk' : kB ≠ 0 := ne_of_gt hk
-  have hT₁' : T₁ ≠ 0 := ne_of_gt hT₁
-  have hT₂' : T₂ ≠ 0 := ne_of_gt hT₂
+  have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
+  have hk' : kB ≠ 0 := ne_of_gt kB_pos
+  have hT₁' : (B₁.T : ℝ) ≠ 0 := ne_of_gt hT₁
+  have hT₂' : (B₂.T : ℝ) ≠ 0 := ne_of_gt hT₂
   unfold freqVar at hxx
   field_simp at hxx ⊢
   linarith [hxx]
 
 /-- The peak product `λ T` equals `h c / (kB x₅)` (wavelength Wien constant). -/
-theorem wien_peak_product (h c kB T lam : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) (hlam : 0 < lam)
-    (hcrit : deriv (fun lam => spectralRadianceWave h c kB lam T) lam = 0) :
-    lam * T = h * c / (kB * wienRoot 5 five_gt_one) := by
-  have hx : 0 < waveVar h c kB T lam := waveVar_pos h c kB T lam hh hc hk hT hlam
-  have e := (wave_crit_iff h c kB T lam hh hc hk hT hlam).mp hcrit
-  have hx' : wienH 5 (waveVar h c kB T lam) = 0 := by
+theorem wien_peak_product (B : BlackBody) (c : SpeedOfLight) (λ : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hλ : 0 < λ)
+    (hcrit : deriv (fun λ => B.spectralRadianceWave c λ) λ = 0) :
+    λ * (B.T : ℝ) = (h : ℝ) * (c : ℝ) / (kB * wienRoot 5 five_gt_one) := by
+  have hx : 0 < B.waveVar c λ := waveVar_pos B c λ hT hλ
+  have e := (wave_crit_iff B c λ hT hλ).mp hcrit
+  have hx' : wienH 5 (B.waveVar c λ) = 0 := by
     unfold wienH
     linarith [e]
   have huniq := wienRoot_unique 5 five_gt_one _ hx hx'
   have hrpos := wienRoot_pos 5 five_gt_one
-  have hh' : h ≠ 0 := ne_of_gt hh
-  have hc' : c ≠ 0 := ne_of_gt hc
-  have hk' : kB ≠ 0 := ne_of_gt hk
-  have hT' : T ≠ 0 := ne_of_gt hT
-  have hlam' : lam ≠ 0 := ne_of_gt hlam
+  have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
+  have hc' : (c : ℝ) ≠ 0 := ne_of_gt c.val_pos
+  have hk' : kB ≠ 0 := ne_of_gt kB_pos
+  have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
+  have hλ' : λ ≠ 0 := ne_of_gt hλ
   have hr' : wienRoot 5 five_gt_one ≠ 0 := ne_of_gt hrpos
   unfold waveVar at huniq
   field_simp at huniq ⊢
   linarith [huniq]
 
 /-- The peak ratio `ν / T` equals `kB x₃ / h` (frequency Wien constant). -/
-theorem wien_peak_ratio (h c kB T nu : ℝ) (hh : 0 < h) (hc : 0 < c)
-    (hk : 0 < kB) (hT : 0 < T) (hν : 0 < nu)
-    (hcrit : deriv (fun nu => spectralRadianceFreq h c kB nu T) nu = 0) :
-    nu / T = kB * wienRoot 3 three_gt_one / h := by
-  have hx : 0 < freqVar h kB T nu := freqVar_pos h kB T nu hh hk hT hν
-  have e := (freq_crit_iff h c kB T nu hh hc hk hT hν).mp hcrit
-  have hx' : wienH 3 (freqVar h kB T nu) = 0 := by
+theorem wien_peak_ratio (B : BlackBody) (c : SpeedOfLight) (ν : ℝ)
+    (hT : 0 < (B.T : ℝ)) (hν : 0 < ν)
+    (hcrit : deriv (fun ν => B.spectralRadiance c ν) ν = 0) :
+    ν / (B.T : ℝ) = kB * wienRoot 3 three_gt_one / (h : ℝ) := by
+  have hx : 0 < B.freqVar ν := freqVar_pos B ν hT hν
+  have e := (freq_crit_iff B c ν hT hν).mp hcrit
+  have hx' : wienH 3 (B.freqVar ν) = 0 := by
     unfold wienH
     linarith [e]
   have huniq := wienRoot_unique 3 three_gt_one _ hx hx'
-  have hh' : h ≠ 0 := ne_of_gt hh
-  have hk' : kB ≠ 0 := ne_of_gt hk
-  have hT' : T ≠ 0 := ne_of_gt hT
+  have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
+  have hk' : kB ≠ 0 := ne_of_gt kB_pos
+  have hT' : (B.T : ℝ) ≠ 0 := ne_of_gt hT
   unfold freqVar at huniq
-  have h1 : h * nu = kB * T * wienRoot 3 three_gt_one := by
+  have h1 : (h : ℝ) * ν = kB * (B.T : ℝ) * wienRoot 3 three_gt_one := by
     field_simp at huniq; exact huniq
   field_simp
   linarith
@@ -1469,4 +1455,4 @@ lemma wienRoot_ne_zero (n : ℝ) (hn : 1 < n) : wienRoot n hn ≠ 0 :=
 lemma wienRoot_le_n (n : ℝ) (hn : 1 < n) : wienRoot n hn ≤ n :=
   le_of_lt (wienRoot_lt n hn)
 
-end Blackbody
+end BlackBody
