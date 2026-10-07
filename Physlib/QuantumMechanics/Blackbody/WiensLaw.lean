@@ -817,9 +817,8 @@ lemma spectralRadianceWave_eq_profile (B : BlackBody) (c : SpeedOfLight) (λ : �
     (hT : 0 < (B.T : ℝ)) (hλ : 0 < λ) :
     B.spectralRadianceWave c λ
       = B.wavePrefactor c * wienProfile 5 (B.waveVar c λ) := by
-  have h1 : 0 < λ ∧ 0 < (B.T : ℝ) := ⟨hλ, hT⟩
   unfold spectralRadianceWave wavePrefactor wienProfile waveVar
-  rw [if_pos h1]
+  rw [if_pos hλ]
   have hλ' : λ ≠ 0 := ne_of_gt hλ
   have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
   have hc' : (c : ℝ) ≠ 0 := ne_of_gt c.val_pos
@@ -837,9 +836,8 @@ lemma spectralRadianceWave_eq_profile (B : BlackBody) (c : SpeedOfLight) (λ : �
 lemma spectralRadiance_eq_profile (B : BlackBody) (c : SpeedOfLight) (ν : ℝ)
     (hT : 0 < (B.T : ℝ)) (hν : 0 < ν) :
     B.spectralRadiance c ν = B.freqPrefactor c * wienProfile 3 (B.freqVar ν) := by
-  have h1 : 0 < ν ∧ 0 < (B.T : ℝ) := ⟨hν, hT⟩
   unfold spectralRadiance freqPrefactor wienProfile freqVar
-  rw [if_pos h1]
+  rw [if_pos hν]
   have hν' : ν ≠ 0 := ne_of_gt hν
   have hh' : (h : ℝ) ≠ 0 := ne_of_gt h_pos
   have hc' : (c : ℝ) ≠ 0 := ne_of_gt c.val_pos
