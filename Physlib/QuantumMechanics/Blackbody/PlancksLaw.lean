@@ -65,6 +65,10 @@ The two forms are related by `B(λ, T) = (c / λ²) B(ν = c/λ, T)`
 
 @[expose] public section
 
+/-!
+## A. The BlackBody structure
+-/
+
 /-- An idealized black body in thermal equilibrium at temperature `T`. -/
 structure BlackBody where
   /-- The temperature of the black body. -/
